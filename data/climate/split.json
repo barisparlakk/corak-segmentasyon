@@ -1,0 +1,20 @@
+{
+  "test_years": [
+    2021,
+    2022
+  ],
+  "block_size_cells": 5,
+  "layout": "paired",
+  "seed": 3,
+  "test_blocks": [
+    "47_874",
+    "46_874",
+    "47_871",
+    "46_871"
+  ],
+  "counts": {
+    "train": 455,
+    "test": 92,
+    "buffer": 50
+  }
+}
