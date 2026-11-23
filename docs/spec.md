@@ -94,18 +94,85 @@ Cell-months per class in each scored set (growing season, 2014 to September 2026
 - The SPEI reference period (1991–2020) is part of the label definition, not a fitted model parameter.
 - Label resolution is about 5 km, so metrics are computed per cell-month by majority vote of pixel predictions, not per pixel.
 
-## Masks and strata (built tomorrow in Earth Engine)
+## Day 2: satellite features (Tue)
 
-| Layer | Definition |
-|---|---|
-| Vegetation mask | ESA WorldCover v200 (2021) classes 10 tree, 20 shrubland, 30 grassland, 40 cropland. Excludes built-up, bare, snow, water and wetland |
-| Cloud masks | Landsat: QA_PIXEL bits for cloud, shadow and snow. Sentinel-2: Cloud Score+ |
-| Elevation strata | Copernicus DEM: < 1,000 m, 1,000–1,500 m, 1,500–2,000 m, > 2,000 m |
-| Irrigation flag | Candidate: cropland pixels that stay green (high NDVI) in July–August. To be decided on Tuesday |
+### Fixed pixels (`src/s07_points.py`)
+- **What:** 14,779 pixels, 25 per climate cell (593 cells; a few small border cells have fewer), stratified random sample with seed 42.
+- **Where they sit:** exactly on Landsat 30 m pixel centres (checked). Each pixel has at least 2/3 WorldCover vegetation cover. The cell_id of each pixel matches `config.cell_rc` (checked).
+- **Files:** `data/points/points.csv` and the Earth Engine asset `projects/corak-515608/assets/corak_points`.
+- **WorldCover classes of the pixels:** grassland 78%, cropland 16%, tree 6%.
 
-## Open decisions for Tuesday
+### Monthly values, March–October 2014–2026 (`s08`, `s08b`, `s09`)
 
-- **VCI/TCI scaling.** With min/max from training years only, the held-out drought year 2021 will fall outside 0–100. The plan is to clip to 0–100 for VHI classes and keep the unclipped values as model features. Model B has only six training seasons for its own min/max, so it reuses Model A's Landsat training-year range.
+| Source | Values | Notes |
+|---|---|---|
+| Landsat 8/9 Level-2 | NDVI, EVI, SAVI, NDMI | Per-scene scale/offset from metadata. QA_PIXEL cloud, shadow, snow and cirrus masked, plus saturation. Monthly median |
+| Landsat 8/9 Level-1 TOA | LST_TOA | Used for TCI and as a feature, for every pixel (see below) |
+| Sentinel-2 L2A, 2019–2026 | NDVI, EVI, NDMI, NDRE | Cloud Score+ ≥ 0.6, SCL snow masked. Reflectance is averaged over each 30 m Landsat footprint before computing indices. Monthly median |
+
+**Pilot checks:**
+- Values are identical to a single scene's own pixels (100%).
+- No rows were lost.
+- Lowland cropland NDVI peaks in May. July LST is about 46 °C.
+
+**Why the temperature is LST_TOA, not Landsat ST_B10:**
+- **The gap:** Level-2 surface temperature is empty wherever the ASTER GED emissivity database has no data (`ST_EMIS` is masked). Over Malatya that is a north–south strip, roughly 38.0–38.65° E, holding 1,348 pixels (9%), in every year.
+- **The method:** LST_TOA is the single-channel method applied to TOA band-10 brightness temperature, with NDVI-threshold emissivity (Sobrino et al. 2004). It is available for 100% of pixels.
+- **Agreement:** against ST_B10 where both exist, r = 0.988, with a stable bias of −5.1 °C (no atmospheric correction) and SD 1.9 °C.
+- **Why the bias doesn't matter:** TCI compares each pixel with its own history, so a stable bias cancels.
+- **ST_B10:** kept in the tables for comparison only, never used as a feature.
+
+**Coverage** (share of pixel-months with valid VHI):
+
+| Elevation | April | May | June | July | August | September | October |
+|---|---|---|---|---|---|---|---|
+| < 1,000 m | 0.99 | 0.98 | 1.00 | 1.00 | 1.00 | 0.99 | 0.97 |
+| > 2,000 m | 0.46 | 0.90 | 0.99 | 1.00 | 0.99 | 0.97 | 0.91 |
+
+April above 2,000 m is the only weak spot, mostly because of snow.
+
+### Indices and features (`s10_indices.py`, `data/features/features.csv.gz`)
+- **Size:** 1,344,889 pixel-months (April–October).
+- **VCI, TCI, VHI:** per pixel and calendar month, with min/max from training years only (all years except 2021 and 2022) and at least 5 valid years. VHI exists for 96.7% of pixel-months.
+- **Out-of-range values:** 17.5% of test-year VCI values fall outside 0–100, as expected because their extremes were not in the reference. VHI classes use the clipped VHI (`VHI_clip`); models get the unclipped values.
+- **Model features:** z-scores per pixel and calendar month against training-year mean and SD (NDVI, EVI, SAVI, NDMI, LST_TOA, and the Sentinel-2 indices), plus the previous month's z (lag 1, which is why March is extracted).
+  - Sentinel-2 z-scores use its 6 training seasons.
+  - Observation counts (NOBS) are for diagnostics only.
+
+### Class coverage after cloud gaps (`s11_day2_checks.py`)
+A cell-month is evaluable when at least 5 of its pixels have a valid VHI.
+
+| Set | Severe | Moderate | Mild | None |
+|---|---|---|---|---|
+| Train | 5,506 / 5,638 | 4,818 / 4,910 | 4,292 / 4,346 | 19,039 / 19,686 |
+| Temporal test | 1,922 / 1,981 | 750 / 757 | 929 / 961 | 2,615 / 2,671 |
+| Spatial test | 1,110 / 1,110 | 1,019 / 1,035 | 917 / 917 | 3,871 / 3,930 |
+| Strict test | 474 / 501 | 120 / 120 | 219 / 219 | 448 / 448 |
+
+Every class stays scoreable in every set.
+
+### Irrigation proxy and reporting strata (`data/points/points_flags.csv`)
+- **Summer-green:** mean July–August NDVI over training years above 0.345 (Otsu threshold). 22% of pixels qualify, but this also catches 96% of WorldCover tree pixels (natural forest, orchards) and some high meadows.
+- **Irrigation proxy:** summer-green **and** cropland or grassland **and** below 1,500 m.
+  - This is not a validated irrigation map.
+  - It is used only to report results separately, never as a model feature.
+- **Strata:** rainfed/pasture 12,169 pixels, likely irrigated 1,773 (12%), tree/shrub 837.
+
+### First look at the signal (training years, cell-month means vs SPEI-3)
+
+| Stratum | VHI | VCI | TCI | LST_TOA z |
+|---|---|---|---|---|
+| All | 0.51 | 0.37 | 0.45 | −0.46 |
+| Rainfed/pasture | 0.52 | 0.39 | 0.45 | −0.46 |
+| Likely irrigated | 0.41 | 0.21 | 0.43 | −0.45 |
+| Tree/shrub | 0.33 | 0.10 | 0.40 | −0.41 |
+
+- **Greenness is decoupled where water is not limiting.** In irrigated land and trees, VCI barely follows drought, because irrigation and deep roots keep plants green.
+- **Temperature still responds everywhere.** TCI holds at about 0.40–0.45 in every stratum.
+- This is the expected physical picture and supports combining both in VHI and in the models.
+
+### Real maps for the presentation (`s12_deck_maps.py`, `outputs/figures/maps/`)
+Elevation, slope, Sentinel-2 true colour and NDVI (June–mid-July 2025), WorldCover land cover, and a Malatya city close-up. All in UTM 37N, clipped to the province.
 
 ## Known risks to check
 
