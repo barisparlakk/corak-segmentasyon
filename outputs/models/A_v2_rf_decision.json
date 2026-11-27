@@ -1,0 +1,14 @@
+{
+  "name": "A",
+  "best_reference": "VHI tuned",
+  "passing": [],
+  "cv_mean_macro_F1": {
+    "C4 RF classifier +cell": 0.2814,
+    "C5 RF regressor +cell": 0.259,
+    "VHI Kogan": 0.2855,
+    "VHI tuned": 0.3017,
+    "always none": 0.2047,
+    "calendar": 0.2464
+  },
+  "frozen": null
+}

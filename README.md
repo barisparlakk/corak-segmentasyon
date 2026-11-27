@@ -5,7 +5,7 @@ The ground truth is the climate drought index SPEI-3. A 5-day solo project, 23�
 
 - **Target:** SPEI-3 drought class per 0.05° climate cell and month (none > −0.5, mild −0.5 to −1.0, moderate −1.0 to −1.5, severe < −1.5), growing season April–October, 2014–2026.
 - **Baseline:** the Vegetation Health Index (VHI = ½ VCI + ½ TCI) with Kogan's cut-offs 40 / 30 / 20.
-- **Models:** XGBoost on per-pixel anomaly features. Model A uses Landsat 8/9, 2014–2026. Model B adds Sentinel-2, 2019–2026.
+- **Models:** XGBoost and Random Forest on per-pixel anomaly features. Model A uses Landsat 8/9, 2014–2026. Model B adds Sentinel-2, 2019–2026.
 - **Evaluation:** test years 2021 and 2022 plus spatial test blocks. Both were fixed before any satellite data was seen.
 
 The full specification, every decision and every result, with dates, is in [`docs/spec.md`](docs/spec.md).
@@ -16,7 +16,7 @@ The full specification, every decision and every result, with dates, is in [`doc
 |---|---|
 | VHI follows SPEI-3 between seasons | Province seasonal means: r = 0.86 over the training years and 0.83 over all 13 years. Cell-month r = 0.53 |
 | VHI does not separate cells within a month | Within-month r between cells = 0.01. Kogan VHI on the strict test set (test cells × 2021–22): macro F1 0.27, against 0.13 for "always none" |
-| No machine-learning model beats VHI | The pre-registered XGBoost (v1) lost to "always none" on 2021–22 (macro F1 0.11 temporal and 0.10 strict test). In the redesigned v2, leave-one-year-out CV over 11 training years gives VHI with tuned cut-offs 0.30 and the best model 0.29. No candidate passed the pass rule declared in advance, so the test years were not re-scored |
+| No machine-learning model beats VHI | The pre-registered XGBoost (v1) lost to "always none" on 2021–22 (macro F1 0.11 temporal and 0.10 strict test). In the redesigned v2, leave-one-year-out CV over 11 training years gives VHI with tuned cut-offs 0.30, the best XGBoost model 0.29 and Random Forest 0.28. No candidate passed the pass rule declared in advance, so the test years were not re-scored |
 | Sentinel-2 adds nothing | Model B equals the Landsat-only model on the same years (2019+) |
 | SPEI-6 is not a better target | VHI correlates slightly better with SPEI-6 (0.57 vs 0.53), but its classes are matched worse in CV |
 | Per-scene temperature correction | Removes most of the Landsat scene seams in the monthly maps, but does not improve class agreement. Not adopted |
@@ -75,7 +75,7 @@ Not in git (rebuilt by the scripts): `data/features/` (pixel-month tables), `dat
 | | `s10_indices.py`, `s11_day2_checks.py` | VCI / TCI / VHI and anomaly features (leave-one-year-out climatology); coverage checks |
 | Evaluation | `s13_eval.py` | Shared loading and scoring (cell-month majority vote, macro F1, QWK, bootstrap intervals) |
 | | `s14_baseline.py` | VHI baseline and VHI–SPEI-3 agreement |
-| | `s15_models.py` (`A`, `A19`, `B`) | XGBoost candidates in leave-one-year-out CV against reference rules, with the pass rule declared in advance. `s15_models_v1.py` is the original, pre-registered run |
+| | `s15_models.py` (`A`, `A19`, `B`; `A rf`) | XGBoost (and Random Forest) candidates in leave-one-year-out CV against reference rules, with the pass rule declared in advance. `s15_models_v1.py` is the original, pre-registered run |
 | | `s16_timescale.py` | Which SPEI window (1–12 months) vegetation follows |
 | Maps | `s17_vhi_climatology.py` | Per-pixel VHI references (min/max over the training years) |
 | | `s18_maps.py`, `s20_finalize_maps.py` | Monthly and seasonal VHI and SPEI maps, vegetation mask, colours |

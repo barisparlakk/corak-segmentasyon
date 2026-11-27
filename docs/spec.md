@@ -258,6 +258,13 @@ Mean leave-one-year-out macro F1 / QWK:
   - vegetation that is decoupled from SPEI by irrigation, trees and wet-year greening
   - acquisition-date artefacts in monthly Landsat composites, mostly in the thermal band (day 4)
 
+### Random Forest in the same CV (Fri 27 Nov, `s15_models.py A rf`, tables `A_v2_rf_cv_*`)
+- **Candidates, declared before running:** C4 (RF classifier) and C5 (RF regressor of SPEI-3, cut like C2). Both use the anomaly and cell-mean features of C1/C2.
+  - 300 trees, min_samples_leaf 100, max_features sqrt, max_samples 0.7, seed 0. C4 uses class-balanced weights.
+  - Same references and the same pass rule as v2.
+- **Result (Model A, 11 folds):** C4 0.281 (beats VHI tuned in 5/11 folds), C5 0.259 (3/11), VHI tuned 0.302, VHI Kogan 0.285. The references are identical to the v2 run.
+- **No candidate passes, so the test years were not scored.** Random Forest is slightly below XGBoost C1 (0.290). The "RF/XGBoost" core of the plan is now fully tested, and neither beats VHI.
+
 ### Which SPEI window does vegetation follow? (`s16_timescale.py`, training years only)
 
 | SPEI window (months) | 1 | 3 | 6 | 9 | 12 |

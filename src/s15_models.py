@@ -11,6 +11,7 @@ none". It had learned the calendar (late summer is often droughty in the trainin
   python s15_models.py A19   same features, 2019+ only (fair partner for B)
   python s15_models.py B     + Sentinel-2, 2019+ (6 folds)
   python s15_models.py A spei6   side check against SPEI-6 classes (CV only, no test scoring)
+  python s15_models.py A rf      Random Forest candidates C4/C5 instead of C1-C3 (day 5)
 
 CV: for each training year y, fit on the other training years (training cells), predict
 training cells in year y, score per cell-month (majority vote, s13_eval). Folds = years.
@@ -21,6 +22,10 @@ Candidates, declared before running (fixed settings, no further tuning):
   C1 XGB classifier, anomaly + cell-mean features, class-balanced weights
   C2 XGB regressor of SPEI-3, anomaly + cell-mean features, prediction cut at -1.5/-1.0/-0.5
   C3 XGB regressor of SPEI-3, anomaly features only (no cell means)
+Day 5 (Fri 27 Nov), Random Forest, declared before running, same references and pass rule:
+  C4 RF classifier, anomaly + cell-mean features, class_weight="balanced"
+  C5 RF regressor of SPEI-3, anomaly + cell-mean features, prediction cut as C2
+  both: 300 trees, min_samples_leaf=100, max_features="sqrt", max_samples=0.7, seed 0
 PASS RULE (declared before running): a candidate passes if its mean CV macro F1 is at least
 0.03 above the best reference's AND it beats that reference in at least 2/3 of the folds.
 The passing candidate with the best mean CV macro F1 is frozen and fitted on all training rows;
@@ -41,8 +46,12 @@ from s13_eval import (CLASSES, MIN_PIX, TEST_YEARS, confusion, load_rows, majori
                       stratum_table, vote)
 
 NAME = sys.argv[1]
-TARGET = sys.argv[2] if len(sys.argv) > 2 else "spei3"   # "spei6": side check, CV only (never test-scored)
+ARGS = sys.argv[2:]
+RF = "rf" in ARGS                                         # day 5: Random Forest candidates
+TARGET = next((a for a in ARGS if a.startswith("spei")), "spei3")   # "spei6": side check, CV only
 TAG = f"{NAME}_v2" if TARGET == "spei3" else f"{NAME}_v2_{TARGET}"
+if RF:
+    TAG += "_rf"
 if os.environ.get("CORAK_FEATURES", "features.csv.gz") != "features.csv.gz":
     TAG += "_lstcorr"                                        # day 5: corrected LST features
 SEED, CAP = 0, 12
@@ -58,6 +67,8 @@ if NAME == "B":
     ANOM += [f"{v}_z" for v in S2] + [f"{v}_z_lag1" for v in S2]
     CELL_VARS += [f"{v}_z" for v in S2]
 FIRST_YEAR = 2019 if NAME in ("A19", "B") else 2014
+RFP = dict(n_estimators=300, min_samples_leaf=100, max_features="sqrt", max_samples=0.7, n_jobs=-1,
+           random_state=SEED)
 XGB = dict(n_estimators=300, max_depth=3, learning_rate=0.05, subsample=0.7, colsample_bytree=0.7,
            min_child_weight=100, reg_lambda=10, tree_method="hist", n_jobs=8, random_state=SEED)
 
@@ -68,6 +79,8 @@ rows = rows.join(cellmean, on=["cell_id", "year", "month"])
 CELL = list(cellmean.columns)
 CANDIDATES = {"C1 classifier +cell": ("cls", ANOM + CELL), "C2 regressor +cell": ("reg", ANOM + CELL),
               "C3 regressor pixel": ("reg", ANOM)}
+if RF:
+    CANDIDATES = {"C4 RF classifier +cell": ("rf_cls", ANOM + CELL), "C5 RF regressor +cell": ("rf_reg", ANOM + CELL)}
 
 train = rows[rows.set == "train"]
 rng = np.random.default_rng(SEED)
@@ -79,6 +92,14 @@ print(f"{NAME}: {len(rows)} rows, fit rows {len(fit_all)}, folds {years}", flush
 
 def fit_predict(kind, feats, fit, X):
     """Fit on `fit`, return pixel classes for X."""
+    if kind == "rf_cls":
+        from sklearn.ensemble import RandomForestClassifier
+        m = RandomForestClassifier(class_weight="balanced", **RFP).fit(fit[feats], fit.cls)
+        return m, m.predict(X[feats])
+    if kind == "rf_reg":
+        from sklearn.ensemble import RandomForestRegressor
+        m = RandomForestRegressor(**RFP).fit(fit[feats], fit.spei3)
+        return m, np.digitize(m.predict(X[feats]), SPEI_CUTS)
     if kind == "cls":
         from xgboost import XGBClassifier
         w = len(fit) / (4 * np.bincount(fit.cls, minlength=4))
@@ -164,7 +185,11 @@ decision.update(frozen=chosen, kind=kind, features=feats, xgb=XGB, cap=CAP, firs
 print(f"\nfrozen: {chosen}")
 
 model, rows["p"] = fit_predict(kind, feats, fit_all, rows)
-model.save_model(MODELS / f"{NAME}_v2.json")
+if kind.startswith("rf"):
+    import joblib
+    joblib.dump(model, MODELS / f"{TAG}.joblib")
+else:
+    model.save_model(MODELS / f"{NAME}_v2.json")
 cm = majority(rows, "p")
 label = f"{NAME} v2 ({chosen})"
 scores = score_table(cm, label)
