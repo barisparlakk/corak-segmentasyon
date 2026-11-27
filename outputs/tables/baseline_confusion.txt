@@ -1,0 +1,28 @@
+VHI Kogan - temporal test
+               pred severe  pred moderate  pred mild  pred none
+true severe           1003            292        126        501
+true moderate          158            123         98        371
+true mild              510            144         51        224
+true none             1109            434        325        747
+
+VHI Kogan - strict test
+               pred severe  pred moderate  pred mild  pred none
+true severe            179             75         31        189
+true moderate           14             19         23         64
+true mild               98             58         23         40
+true none               50             93         98        207
+
+VHI tuned - temporal test
+               pred severe  pred moderate  pred mild  pred none
+true severe            924            530        216        252
+true moderate          137            239        212        162
+true mild              473            261        104         91
+true none             1023            840        485        267
+
+VHI tuned - strict test
+               pred severe  pred moderate  pred mild  pred none
+true severe            160            141         82         91
+true moderate           11             48         34         27
+true mild               84            108         17         10
+true none               29            203        136         80
+

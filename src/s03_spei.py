@@ -84,17 +84,18 @@ def spei3(d, t):
     return glo_spei(acc, idx.month.values, idx.year.values)
 
 
-spei = spei3(ds.D, ds.time)
-tc_d = ds.tc_pr - 0.1 * ds.tc_pet_raw          # TerraClimate pet scale factor 0.1 (checked: ~1135 mm/yr)
-spei_tc = spei3(tc_d, ds.time_tc)
+if __name__ == "__main__":
+    spei = spei3(ds.D, ds.time)
+    tc_d = ds.tc_pr - 0.1 * ds.tc_pet_raw          # TerraClimate pet scale factor 0.1 (checked: ~1135 mm/yr)
+    spei_tc = spei3(tc_d, ds.time_tc)
 
-out = xr.Dataset(
-    {"spei3": (("time", "lat", "lon"), spei), "P": ds.P, "PET": ds.PET, "D": ds.D},
-    coords={"time": ds.time, "lat": ds.lat, "lon": ds.lon},
-)
-out["spei3_tc"] = xr.DataArray(spei_tc, dims=("time_tc", "lat", "lon"),
-                               coords={"time_tc": ds.time_tc, "lat": ds.lat, "lon": ds.lon})
-out.to_netcdf(CLIMATE_DIR / "spei3.nc")
-print("Hargreaves PET, province-wide annual mean 1991-2020:",
-      round(float(ds.PET.sel(time=slice("1991", "2020")).groupby("time.year").sum().mean()), 0), "mm")
-print("saved spei3.nc")
+    out = xr.Dataset(
+        {"spei3": (("time", "lat", "lon"), spei), "P": ds.P, "PET": ds.PET, "D": ds.D},
+        coords={"time": ds.time, "lat": ds.lat, "lon": ds.lon},
+    )
+    out["spei3_tc"] = xr.DataArray(spei_tc, dims=("time_tc", "lat", "lon"),
+                                   coords={"time_tc": ds.time_tc, "lat": ds.lat, "lon": ds.lon})
+    out.to_netcdf(CLIMATE_DIR / "spei3.nc")
+    print("Hargreaves PET, province-wide annual mean 1991-2020:",
+          round(float(ds.PET.sel(time=slice("1991", "2020")).groupby("time.year").sum().mean()), 0), "mm")
+    print("saved spei3.nc")

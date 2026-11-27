@@ -13,3 +13,5 @@ credentials
 data/features/
 outputs/figures/maps/*.png
 outputs/figures/maps/*.jpg
+data/ref/
+outputs/maps/

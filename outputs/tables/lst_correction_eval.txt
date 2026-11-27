@@ -1,0 +1,21 @@
+training cells x training years: 822363 pixel-months, 33874 cell-months
+
+1. Seam diagnostic: per year-month correlation across cells of TCI with dTa
+   median r: original -0.36, corrected +0.13; year-months with r < -0.5: original 27, corrected 5 of 76
+   May 2021 is a test month and not included. Largest |r| year-months (original):
+                 original  corrected
+     year month                     
+     2015 4         -0.90      -0.17
+     2026 6         -0.87      -0.75
+     2019 10        -0.86      -0.64
+     2017 7         -0.85       0.35
+     2016 9         -0.82      -0.52
+     2014 4         -0.80       0.19
+
+2. Agreement with SPEI-3, cell-month means (VCI does not change: a sanity check)
+   TCI      orig: overall r +0.456, within-month r +0.004
+   TCI      corr: overall r +0.494, within-month r +0.047
+   VCI      orig: overall r +0.375, within-month r +0.025
+   VCI      corr: overall r +0.375, within-month r +0.025
+   VHI_clip orig: overall r +0.526, within-month r +0.010
+   VHI_clip corr: overall r +0.552, within-month r +0.041

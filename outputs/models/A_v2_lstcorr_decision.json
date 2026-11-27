@@ -1,0 +1,15 @@
+{
+  "name": "A",
+  "best_reference": "VHI tuned",
+  "passing": [],
+  "cv_mean_macro_F1": {
+    "C1 classifier +cell": 0.2971,
+    "C2 regressor +cell": 0.269,
+    "C3 regressor pixel": 0.254,
+    "VHI Kogan": 0.284,
+    "VHI tuned": 0.2927,
+    "always none": 0.2047,
+    "calendar": 0.2464
+  },
+  "frozen": null
+}

@@ -1,7 +1,8 @@
 """Day 2, step 4: drought indices and anomaly features from the fixed-pixel time series.
 
 All reference statistics use TRAINING YEARS ONLY (every study year except the test years),
-per pixel and calendar month, and need at least MIN_YEARS valid years.
+per pixel and calendar month, and need at least MIN_YEARS valid years. For a training year the
+reference is the OTHER training years (leave-one-year-out, changed on day 3; see add_stats).
 
 Baseline (Kogan):
   VCI = 100 (NDVI - NDVImin) / (NDVImax - NDVImin)
@@ -12,8 +13,11 @@ Model features (robust to a single contaminated year fixing min or max):
   pixel's own training-year mean and SD for that calendar month, plus the previous month's z.
 
 Output: data/features/features.csv.gz (one row per pixel-month, April-October)
+        python s10_indices.py corr -> features_corr.csv.gz with the s08c corrected LST_TOA (day 5)
 """
 import json
+import sys
+import warnings
 
 import numpy as np
 import pandas as pd
@@ -33,15 +37,31 @@ def load(prefix):
 
 
 def add_stats(df, var, train):
-    g = df[train].groupby(["pid", "month"])[var]
-    st = pd.DataFrame({"mean": g.mean(), "sd": g.std(), "min": g.min(), "max": g.max(), "n": g.count()})
-    st.loc[st.n < MIN_YEARS, ["mean", "sd", "min", "max"]] = np.nan
-    st.columns = [f"{var}_{c}" for c in st.columns]
-    return df.merge(st, left_on=["pid", "month"], right_index=True, how="left")
+    """Per pixel and calendar month: mean, SD, min, max of `var` over the reference years.
+    Test years: all training years. A TRAINING year: all OTHER training years (leave-one-year-out),
+    so a training year's anomalies are built exactly like a test year's (its own value never sets
+    its own min/max/mean) and year-held-out cross-validation is truly held out."""
+    w = df.set_index(["pid", "month", "year"])[var].unstack("year")
+    train_years = sorted(df.loc[train, "year"].unique())
+    parts = []
+    for y in w.columns:
+        ref = [c for c in train_years if c != y]
+        a = w[ref].values
+        n = np.sum(~np.isnan(a), axis=1)
+        with np.errstate(all="ignore"), warnings.catch_warnings():
+            warnings.simplefilter("ignore", RuntimeWarning)
+            st = pd.DataFrame({"mean": np.nanmean(a, 1), "sd": np.nanstd(a, 1, ddof=1),
+                               "min": np.nanmin(a, 1), "max": np.nanmax(a, 1), "n": n}, index=w.index)
+        st.loc[st.n < MIN_YEARS, ["mean", "sd", "min", "max"]] = np.nan
+        parts.append(st.assign(year=y))
+    st = pd.concat(parts).reset_index()
+    st.columns = ["pid", "month"] + [f"{var}_{c}" for c in ["mean", "sd", "min", "max", "n"]] + ["year"]
+    return df.merge(st, on=["pid", "month", "year"], how="left")
 
 
-def build():
-    ls = load("landsat").merge(load("lsttoa"), on=["pid", "year", "month"], how="left")
+def build(lst="lsttoa", out_name="features.csv.gz"):
+    """lst="lstcorr": per-scene air-temperature-corrected LST_TOA (s08c) -> features_corr.csv.gz."""
+    ls = load("landsat").merge(load(lst).drop(columns=["DTA"], errors="ignore"), on=["pid", "year", "month"], how="left")
     train = ~ls.year.isin(TEST_YEARS)
     for v in LS_VARS:
         ls = add_stats(ls, v, train)
@@ -70,12 +90,13 @@ def build():
     out = ls[ls.month.isin(SEASON_MONTHS)]
     drop = [c for c in out.columns if c.endswith(("_mean", "_sd", "_min", "_max", "_n"))]
     out = out.drop(columns=drop)
-    out.to_csv(FEAT / "features.csv.gz", index=False)
+    out.to_csv(FEAT / out_name, index=False)
     return out
 
 
 if __name__ == "__main__":
-    f = build()
+    corr = len(sys.argv) > 1 and sys.argv[1] == "corr"
+    f = build("lstcorr", "features_corr.csv.gz") if corr else build()
     print(f"rows {len(f)} | pixels {f.pid.nunique()} | years {sorted(f.year.unique())}")
     tr = ~f.year.isin(TEST_YEARS)
     print("VHI valid share:", round(f.VHI.notna().mean(), 3))

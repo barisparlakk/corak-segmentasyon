@@ -1,0 +1,14 @@
+A xgb - temporal test
+               pred severe  pred moderate  pred mild  pred none
+true severe            418            605        746        153
+true moderate          437            167         98         48
+true mild              598            291          3         37
+true none              822            540       1094        159
+
+A xgb - strict test
+               pred severe  pred moderate  pred mild  pred none
+true severe            136            145        108         85
+true moderate           96              6          1         17
+true mild              103            102          2         12
+true none              126             46        248         28
+

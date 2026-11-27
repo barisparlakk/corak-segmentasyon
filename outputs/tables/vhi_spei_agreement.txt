@@ -1,0 +1,10 @@
+cell-month mean VHI vs SPEI-3, training years x training cells (n = 33874)
+  overall r = 0.526
+  by month: {4: 0.65, 5: 0.443, 6: 0.676, 7: 0.423, 8: 0.469, 9: 0.475, 10: 0.63}
+  by stratum: {'likely irrigated': 0.425, 'rainfed/pasture': 0.531, 'tree/shrub': 0.345}
+  lag (k = months SPEI-3 precedes VHI; -1 = SPEI-3 one month later): {-1: np.float64(0.401), 0: np.float64(0.526), 1: np.float64(0.434), 2: np.float64(0.449)}
+  season means per training year (n = 11): r = 0.858
+year    2014   2015   2016   2017   2018   2019   2020   2023   2024   2025   2026
+VHI    30.59  53.77  38.07  30.63  48.64  48.35  38.77  68.33  51.17  32.94  68.35
+spei3  -0.49   0.20  -0.60  -1.00   0.21   0.00  -0.38   0.66  -0.75  -1.42   1.65
+  within-month (between-cell) r = 0.010  (how well VHI ranks cells against each other in the same month)

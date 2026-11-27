@@ -1,0 +1,10 @@
+,macro_F1,macro_F1,QWK,QWK,beats_best_ref_folds
+,mean,std,mean,std,
+method,,,,,
+C1 classifier +cell,0.262,0.044,0.182,0.109,2
+C2 regressor +cell,0.25,0.061,0.128,0.151,2
+C3 regressor pixel,0.241,0.066,0.1,0.172,2
+VHI Kogan,0.287,0.056,0.236,0.189,3
+VHI tuned,0.29,0.049,0.243,0.166,0
+always none,0.218,0.148,0.0,0.0,1
+calendar,0.217,0.101,0.149,0.325,2

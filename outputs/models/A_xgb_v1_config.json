@@ -1,0 +1,48 @@
+{
+  "name": "A",
+  "algo": "xgb",
+  "featset": "pixel",
+  "features": [
+    "NDVI",
+    "EVI",
+    "SAVI",
+    "NDMI",
+    "LST_TOA",
+    "NDVI_z",
+    "EVI_z",
+    "SAVI_z",
+    "NDMI_z",
+    "LST_TOA_z",
+    "NDVI_z_lag1",
+    "EVI_z_lag1",
+    "SAVI_z_lag1",
+    "NDMI_z_lag1",
+    "LST_TOA_z_lag1",
+    "VCI",
+    "TCI",
+    "VHI_clip",
+    "month",
+    "elev",
+    "lc"
+  ],
+  "params": {
+    "n_estimators": 150,
+    "max_depth": 3,
+    "min_child_weight": 200,
+    "reg_lambda": 10
+  },
+  "cap": 12,
+  "first_year": 2014,
+  "test_years": [
+    2021,
+    2022
+  ],
+  "class_weights": [
+    1.527447034702711,
+    1.7479101494612443,
+    1.9597574045206547,
+    0.44190422418868686
+  ],
+  "cv_macro_F1": 0.28244295013312876,
+  "cv_QWK": 0.1688410269317005
+}
